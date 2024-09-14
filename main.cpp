@@ -715,6 +715,7 @@ int main()
 			ofstream out(filename1);
 			ofstream out2(filename2);
 			ofstream out3(filename3);
+			average_value.clear();
 			while (getline(in, st))
 			{
 				vector <string> subjects;
