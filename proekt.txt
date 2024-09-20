@@ -1,0 +1,392 @@
+
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QGraphicsLineItem>
+#include <QGraphicsTextItem>
+#include <QApplication>
+#include <cmath>
+#include <QDebug>
+#include <vector>
+const int scale = 15;
+int counter;
+double* P3 = new double[45] { 22, 23, 24, 24, 25, 25, 26, 27, 27, 27, 27, 29, 29, 30, 31, 38, 39, 41, 41, 42, 43, 43, 44, 44, 44, 45, 46, 47, 48, 49, 43, 45, 45, 46, 47, 48, 49, 49, 50, 51, 51, 53, 53, 53, 54 };
+double* P8 = new double[45] { 14, 23, 11, 27, 29, 15, 19, 17, 22, 25, 13, 26, 11, 17, 19, 23, 28, 25, 11, 17, 15, 22, 26, 29, 19, 15, 11, 17, 16, 23, 25, 13, 26, 11, 17, 19, 23, 28, 25, 11, 11, 27, 29, 15, 19 };
+double* P7 = new double[45] { 11, 13, 19, 16, 12, 11, 17, 18, 13, 11, 15, 16, 19, 17, 12, 13, 11, 15, 16, 19, 17, 13, 19, 16, 12, 11, 17, 18, 11, 14, 17, 13, 19, 16, 12, 11, 17, 18, 11, 14, 15, 13, 19, 17, 12 };
+double* P4 = new double[45] { 18, 19, 15, 17, 19, 21, 20, 16, 18, 22, 23, 20, 22, 18, 21, 13, 16, 11, 13, 14, 12, 16, 11, 13, 15, 9, 12, 14, 16, 13, 29, 26, 30, 28, 31, 29, 25, 27, 31, 28, 30, 26, 29, 31, 28 };
+int* classes = new int[45] {};
+const QColor *colors = new QColor[3] {Qt::magenta, Qt::red, Qt::green};
+
+double* PX = P3;
+double* PY = P4;
+QString nameAxisX = "3";
+QString nameAxisY = "4";
+
+struct Point {
+    double x;
+    double y;
+    int pointClass;
+    int iter;
+};
+
+void drawPoint(QGraphicsScene *scene, double x, double y, QColor color) {
+    QGraphicsEllipseItem *point = new QGraphicsEllipseItem(x*scale - 5, -y*scale - 5, 10, 10);
+    point->setBrush(color);
+    scene->addItem(point);
+}
+
+void drawBlackPoints(QGraphicsScene *scene) {
+    for (int i=0; i<45; i++) {
+        drawPoint(scene, PX[i], PY[i], Qt::black);
+    }
+}
+
+void drawCross(QGraphicsScene *scene, double x, double y, QColor color) {
+    const int crossSize = 9;
+        QPen pen(color);
+        pen.setWidth(5);
+
+        // Первая диагональная линия
+        QGraphicsLineItem *diagonalLine1 = new QGraphicsLineItem(x*scale - crossSize, -y*scale - crossSize, x*scale + crossSize, -y*scale + crossSize);
+        diagonalLine1->setPen(pen);
+        scene->addItem(diagonalLine1);
+
+        // Вторая диагональная линия
+        QGraphicsLineItem *diagonalLine2 = new QGraphicsLineItem(x*scale - crossSize, -y*scale + crossSize, x*scale + crossSize, -y*scale - crossSize);
+        diagonalLine2->setPen(pen);
+        scene->addItem(diagonalLine2);
+        //----------------
+        QPen pen2(Qt::black);
+        pen2.setWidth(2);
+
+        // Первая диагональная линия
+        QGraphicsLineItem *diagonalLine3 = new QGraphicsLineItem(x*scale - crossSize, -y*scale - crossSize, x*scale + crossSize, -y*scale + crossSize);
+        diagonalLine3->setPen(pen2);
+        scene->addItem(diagonalLine3);
+
+        // Вторая диагональная линия
+        QGraphicsLineItem *diagonalLine4 = new QGraphicsLineItem(x*scale - crossSize, -y*scale + crossSize, x*scale + crossSize, -y*scale - crossSize);
+        diagonalLine4->setPen(pen2);
+        scene->addItem(diagonalLine4);
+}
+
+void drawCenters(QGraphicsScene *scene, double *firstCenter, double *secondCenter, double *thirdCenter) {
+    drawCross(scene, firstCenter[0], firstCenter[1], Qt::magenta);
+    drawCross(scene, secondCenter[0], secondCenter[1], Qt::red);
+    drawCross(scene, thirdCenter[0], thirdCenter[1], Qt::green);
+}
+
+void drawPoints(QGraphicsScene *scene) {
+    for (int i = 0; i < 45; i++) {
+        drawPoint(scene, PX[i], PY[i], colors[classes[i]]);
+    }
+}
+
+void drawAxis(QGraphicsScene *scene) {
+    const int axisLength = 55*(scale + 1);
+    QGraphicsLineItem *xAxis = new QGraphicsLineItem(0, 0, axisLength, 0);
+    scene->addItem(xAxis);
+
+    // Ось Y
+    QGraphicsLineItem *yAxis = new QGraphicsLineItem(0, -35*(scale + 1), 0, 0);
+    scene->addItem(yAxis);
+
+    for (int i = 0; i <= 55; i += 5) {
+        // Метки на оси X
+        QGraphicsTextItem *xLabel = new QGraphicsTextItem(QString::number(i));
+        xLabel->setPos(i*scale, -20);
+        scene->addItem(xLabel);
+
+        // Насечки на оси X
+                QGraphicsLineItem *xTick = new QGraphicsLineItem(i*scale, -5, i*scale, 5);
+                scene->addItem(xTick);
+    }
+
+    for (int i = 0; i <= 35; i += 5) {
+        // Метки на оси Y
+                if (i != 0) {
+                    QGraphicsTextItem *yLabel = new QGraphicsTextItem(QString::number(i));
+                    yLabel->setPos(0, -i*scale - 20);
+                    scene->addItem(yLabel);
+                }
+
+        // Насечки на оси Y
+                QGraphicsLineItem *yTick = new QGraphicsLineItem(-5, -i*scale, 5, -i*scale);
+                scene->addItem(yTick);
+    }
+    // подпись осей
+    QGraphicsTextItem *textItem1 = new QGraphicsTextItem("Признак " + nameAxisX);
+    QFont font1 = textItem1->font();
+    font1.setPointSize(10);
+    textItem1->setFont(font1);
+    textItem1->setPos(scale*60, 0);
+    scene->addItem(textItem1);
+    QGraphicsTextItem *textItem2 = new QGraphicsTextItem("Признак " + nameAxisY);
+    QFont font2 = textItem2->font();
+    font2.setPointSize(10);
+    textItem2->setFont(font2);
+    textItem2->setPos(0, -scale*40);
+    scene->addItem(textItem2);
+}
+
+double getDist(double x1, double y1, double x2, double y2) {
+return std::abs(x2 - x1) + std::abs(y2 - y1);
+}
+
+void resetCenters (double *firstCenter, double *secondCenter, double *thirdCenter) {
+    firstCenter[0] = 0;
+    firstCenter[1] = 0;
+    secondCenter[0] = 0;
+    secondCenter[1] = 0;
+    thirdCenter[0] = 0;
+    thirdCenter[1] = 0;
+}
+
+double* clusterisation(QGraphicsScene *scene, std::vector<Point>& points) {
+    double *firstCenter = new double [2];
+    double *secondCenter = new double [2];
+    double *thirdCenter = new double [2];
+    for (int i=0; i<45; i++) {
+        classes[i] = -1;
+    }
+
+    bool hasChanges = true;
+    bool firstCall = true;
+    const int maxIterations = 200;
+    counter = 0;
+    while(hasChanges && counter < maxIterations) {
+        if (firstCall) {
+            firstCall = false;
+            int randInt = qrand() % 45;
+            firstCenter = new double[2] {PX[randInt], PY[randInt]};
+            double maxDist = 0;
+            for (int i=0; i < 45; i++) {
+                double dist = getDist(firstCenter[0],firstCenter[1],PX[i], PY[i]);
+                if (dist > maxDist) {
+                    secondCenter[0] = PX[i];
+                    secondCenter[1] = PY[i];
+                    maxDist = dist;
+                }
+            }
+
+            maxDist = 0;
+            for (int i=0; i < 45; i++) {
+                double minDist = std::min(getDist(PX[i],PY[i], firstCenter[0],firstCenter[1]), getDist(PX[i],PY[i], secondCenter[0],secondCenter[1]));
+                if (minDist > maxDist) {
+                    maxDist = minDist;
+                    thirdCenter[0] = PX[i];
+                    thirdCenter[1] = PY[i];
+                }
+            }
+            //пересчет первого центра
+           /* maxDist = 0;
+            for (int i=0; i < 45; i++) {
+                double minDist = std::min(getDist(PX[i],PY[i], thirdCenter[0],thirdCenter[1]), getDist(PX[i],PY[i], secondCenter[0],secondCenter[1]));
+                if (minDist > maxDist) {
+                    maxDist = minDist;
+                    firstCenter[0] = PX[i];
+                    firstCenter[1] = PY[i];
+                }
+            }*/
+        } else {
+            int *classCounter = new int[3] {0, 0, 0};
+            resetCenters(firstCenter, secondCenter, thirdCenter);
+            for (int i=0; i<45; i++) {
+                if (classes[i] == 0) {
+                    firstCenter[0] += PX[i];
+                    firstCenter[1] += PY[i];
+                    classCounter[0]++;
+                }
+                else if (classes[i] == 1) {
+                    secondCenter[0] += PX[i];
+                    secondCenter[1] += PY[i];
+                    classCounter[1]++;
+                }
+                else {
+                    thirdCenter[0] += PX[i];
+                    thirdCenter[1] += PY[i];
+                    classCounter[2]++;
+                }
+            }
+            for (int i=0; i<3; i++) {
+                if (classCounter[i] == 0)
+                    classCounter[i] = 1;
+            }
+            firstCenter[0] /= classCounter[0];
+            firstCenter[1] /= classCounter[0];
+            secondCenter[0] /= classCounter[1];
+            secondCenter[1] /= classCounter[1];
+            thirdCenter[0] /= classCounter[2];
+            thirdCenter[1] /= classCounter[2];
+        }
+
+        //выдача класса в зависимости от расстояния до центров кластеров
+        hasChanges = false;
+        for (int i=0; i<45; i++) {
+            int choosenClass;
+            double dist1 = getDist(firstCenter[0], firstCenter[1], PX[i], PY[i]);
+            double dist2 = getDist(secondCenter[0], secondCenter[1], PX[i], PY[i]);
+            double dist3 = getDist(thirdCenter[0], thirdCenter[1], PX[i], PY[i]);
+            if (dist1 <= dist2 && dist1 <= dist3) {
+                choosenClass = 0;
+            }
+            else if (dist2 <= dist1 && dist2 <= dist3) {
+                choosenClass = 1;
+            }
+            else {
+                choosenClass = 2;
+            }
+
+            if (classes[i] != choosenClass) {
+                hasChanges = true;
+                classes[i] = choosenClass;
+            }
+        }
+
+        if (hasChanges) {
+            points.push_back({firstCenter[0], firstCenter[1], 0, counter+1});
+            points.push_back({secondCenter[0], secondCenter[1], 1, counter+1});
+            points.push_back({thirdCenter[0], thirdCenter[1], 2, counter+1});
+           // drawCenters(scene, firstCenter, secondCenter, thirdCenter);
+        }
+        counter++;
+    }
+
+    double *pointsCounter = new double[3] {0, 0, 0};
+    for (int i=0; i<45; i++) {
+        pointsCounter[classes[i]]++;
+    }
+
+    points.push_back({firstCenter[0], firstCenter[1], 0, counter});
+    points.push_back({secondCenter[0], secondCenter[1], 1, counter});
+    points.push_back({thirdCenter[0], thirdCenter[1], 2, counter});
+    return pointsCounter;
+}
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+    , scene(new QGraphicsScene(this))
+{
+    ui->setupUi(this);
+    ui->graphicsView->setScene(scene);
+    ui->SKO1->setStyleSheet("QLabel { color : magenta; }");
+    ui->SKO2->setStyleSheet("QLabel { color : red; }");
+    ui->SKO3->setStyleSheet("QLabel { color : lime; }");
+
+    drawBlackPoints(scene);
+    drawAxis(scene);
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::on_genButton_clicked()
+{
+}
+
+void clearScene(QGraphicsScene *scene, Ui::MainWindow* ui) {
+    scene->clear();
+    ui->SKO1->setText("Точек класса (A) =");
+    ui->SKO2->setText("Точек класса (B) =");
+    ui->SKO3->setText("Точек класса (C) =");
+    ui->cycleInfo->setText("Количество циклов =");
+    drawBlackPoints(scene);
+    drawAxis(scene);
+}
+
+void MainWindow::on_clearButton_clicked()
+{
+    clearScene(scene, ui);
+}
+
+
+void MainWindow::on_genButton_pressed()
+{
+    std::vector<Point> centers;
+    scene->clear();
+    double *pointsCounter = clusterisation(scene, centers);
+
+    QString str = "Точек класса (A) = ";
+    str += QString::number(pointsCounter[0]);
+    ui->SKO1->setText(str);
+
+    str = "Точек класса (B) = ";
+    str += QString::number(pointsCounter[1]);
+    ui->SKO2->setText(str);
+
+    str = "Точек класса (C) = ";
+    str += QString::number(pointsCounter[2]);
+    ui->SKO3->setText(str);
+
+    str = "Количество циклов = ";
+    str += QString::number(counter);
+    ui->cycleInfo->setText(str);
+
+    double sigma = std::sqrt((std::pow(pointsCounter[0]-15, 2) + std::pow(pointsCounter[1]-15, 2) + std::pow(pointsCounter[2]-15, 2))/3);
+    str = "СКО = ";
+    str += QString::number(sigma);
+    ui->SKO->setText(str);
+
+    drawPoints(scene);
+
+    for (const Point p : centers) {
+        drawCross(scene, p.x, p.y, colors[p.pointClass]);
+        QGraphicsTextItem *xLabel = new QGraphicsTextItem(QString::number(p.iter));
+        QFont font = xLabel->font();
+        font.setPointSize(10);
+        xLabel->setFont(font);
+        xLabel->setPos(p.x*scale, -p.y*scale + 12);
+        scene->addItem(xLabel);
+    }
+
+    drawAxis(scene);
+}
+
+
+void MainWindow::on_comboBox_activated(int index)
+{
+    switch (index) {
+    case 0:
+        PX = P3;
+        PY = P4;
+        nameAxisX = "3";
+        nameAxisY = "4";
+        break;
+    case 1:
+        PX = P3;
+        PY = P7;
+        nameAxisX = "3";
+        nameAxisY = "7";
+        break;
+    case 2:
+        PX = P3;
+        PY = P8;
+        nameAxisX = "3";
+        nameAxisY = "8";
+        break;
+    case 3:
+        PX = P4;
+        PY = P7;
+        nameAxisX = "4";
+        nameAxisY = "7";
+        break;
+    case 4:
+        PX = P4;
+        PY = P8;
+        nameAxisX = "4";
+        nameAxisY = "8";
+        break;
+    case 5:
+        PX = P7;
+        PY = P8;
+        nameAxisX = "7";
+        nameAxisY = "8";
+        break;
+    }
+    clearScene(scene, ui);
+}
+
