@@ -393,6 +393,11 @@ int main()
 						out0 << string_for_file << endl;
 						cout << endl << "(Введите '-' для завершения ввода)" << endl;
 					} while (infos != "-");
+					//tyt
+					std::ofstream vmdelet_out;                    //создаем поток 
+					vmdelet_out.open("_filesList.txt", std::ios::app);  // открываем файл для записи в конец
+					vmdelet_out << filename << endl;                        // сама запись
+					vmdelet_out.close();                          // закрываем файл
 					out0.close();
 					ifstream in(filename);
 
@@ -400,6 +405,19 @@ int main()
 				else if (answ2 == "1")
 				{
 					bool err = 0;
+					std::string line;
+
+					cout << "Файлы с данными:" << endl;
+					std::ifstream in1("_filesList.txt"); // окрываем файл для чтения
+					if (in1.is_open())
+					{
+						while (std::getline(in1, line))
+						{
+							std::cout << line << std::endl;
+						}
+					}
+					in1.close();
+
 					cout << "Введите название файла из которого будут взяты исходные данные (Готовый файл по умолчанию 'Список'):" << endl << endl;
 					cout << ">";
 					cin >> name;
